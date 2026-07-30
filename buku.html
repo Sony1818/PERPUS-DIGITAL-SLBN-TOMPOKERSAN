@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Buku - Perpustakaan SLBN Tompokersan Lumajang</title>
+<link rel="icon" href="assets/favicon.png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<template id="bukuTemplate">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div class="input-group" style="max-width: 320px;">
+      <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control" id="searchBuku" placeholder="Cari judul atau ID buku...">
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <select class="form-select" id="filterStatusBuku" style="max-width:160px;">
+        <option value="">Semua Status</option>
+        <option value="Tersedia">Tersedia</option>
+        <option value="Dipinjam">Dipinjam</option>
+      </select>
+      <button class="btn btn-outline-secondary" id="btnCetakSemuaLabel"><i class="bi bi-printer"></i> Cetak Label Massal</button>
+      <button class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modalBuku" id="btnTambahBuku">
+        <i class="bi bi-plus-lg"></i> Tambah Buku
+      </button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>ID Buku</th><th>Judul</th><th>Penulis</th><th>Kategori</th><th>Status</th><th class="text-end">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tabelBuku"></tbody>
+      </table>
+    </div>
+    <div class="empty-state d-none" id="emptyBuku">
+      <i class="bi bi-book"></i>
+      Belum ada data buku. Klik "Tambah Buku" untuk mulai.
+    </div>
+  </div>
+</template>
+
+<!-- Modal Tambah/Edit Buku -->
+<div class="modal fade" id="modalBuku" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formBuku">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalBukuTitle">Tambah Buku</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="bukuDocId">
+          <div class="mb-3">
+            <label class="form-label">ID Buku</label>
+            <input type="text" class="form-control" id="bukuId" placeholder="Contoh: BK-0001" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Judul Buku</label>
+            <input type="text" class="form-control" id="bukuJudul" required>
+          </div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label">Penulis</label>
+              <input type="text" class="form-control" id="bukuPenulis">
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label">Penerbit</label>
+              <input type="text" class="form-control" id="bukuPenerbit">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Kategori</label>
+            <input type="text" class="form-control" id="bukuKategori" placeholder="Contoh: Fiksi, Sains, Sejarah">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-brand">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Label QR Buku -->
+<div class="modal fade" id="modalLabel" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Label Buku</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="labelPreview" class="d-inline-block"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-brand" id="btnCetakLabelTunggal"><i class="bi bi-printer"></i> Cetak</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="print-area" id="printArea"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="js/firebase.js"></script>
+<script src="js/common.js"></script>
+<script src="js/buku.js"></script>
+<script>
+  requireAuth(() => {
+    renderShell("Data Buku");
+    document.getElementById("pageContent").innerHTML = document.getElementById("bukuTemplate").innerHTML;
+    initBukuPage();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Perpustakaan SLBN Tompokersan Lumajang</title>
+<link rel="icon" href="assets/favicon.png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<template id="dashboardTemplate">
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+      <div class="stat-card">
+        <div class="stat-icon bg-icon-teal"><i class="bi bi-book"></i></div>
+        <div><div class="stat-value" id="statTotalBuku">0</div><div class="stat-label">Total Buku</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="stat-card">
+        <div class="stat-icon bg-icon-purple"><i class="bi bi-people"></i></div>
+        <div><div class="stat-value" id="statTotalAnggota">0</div><div class="stat-label">Total Anggota</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="stat-card">
+        <div class="stat-icon bg-icon-orange"><i class="bi bi-box-arrow-right"></i></div>
+        <div><div class="stat-value" id="statDipinjam">0</div><div class="stat-label">Buku Dipinjam</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="stat-card">
+        <div class="stat-icon bg-icon-green"><i class="bi bi-check2-circle"></i></div>
+        <div><div class="stat-value" id="statTersedia">0</div><div class="stat-label">Buku Tersedia</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="stat-card">
+        <div class="stat-icon bg-icon-blue"><i class="bi bi-calendar-plus"></i></div>
+        <div><div class="stat-value" id="statPinjamHariIni">0</div><div class="stat-label">Pinjam Hari Ini</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="stat-card">
+        <div class="stat-icon bg-icon-red"><i class="bi bi-calendar-check"></i></div>
+        <div><div class="stat-value" id="statKembaliHariIni">0</div><div class="stat-label">Kembali Hari Ini</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="table-card p-3">
+        <h2 class="h6 mb-3"><i class="bi bi-exclamation-triangle text-warning"></i> Buku Terlambat Dikembalikan</h2>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Anggota</th><th>Buku</th><th>Tgl Pinjam</th><th>Terlambat</th></tr></thead>
+            <tbody id="tabelTerlambat"></tbody>
+          </table>
+        </div>
+        <div class="empty-state d-none" id="emptyTerlambat">
+          <i class="bi bi-emoji-smile"></i>
+          Tidak ada buku yang terlambat saat ini.
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card-soft p-3 mb-3">
+        <h2 class="h6 mb-3"><i class="bi bi-hdd-stack"></i> Cadangkan &amp; Pulihkan Data</h2>
+        <p class="text-muted-soft small">Backup menyimpan seluruh data anggota, buku, dan transaksi ke satu file JSON. Restore akan menambahkan/menimpa data dari file backup.</p>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-brand" id="btnBackup"><i class="bi bi-download"></i> Backup Data</button>
+          <label class="btn btn-outline-secondary mb-0">
+            <i class="bi bi-upload"></i> Restore Data
+            <input type="file" id="fileRestore" accept="application/json" hidden>
+          </label>
+        </div>
+      </div>
+
+      <div class="card-soft p-3">
+        <h2 class="h6 mb-3"><i class="bi bi-info-circle"></i> Ringkasan Cepat</h2>
+        <ul class="list-unstyled small mb-0 text-muted-soft" id="ringkasanCepat">
+          <li>Memuat data...</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/firebase.js"></script>
+<script src="js/common.js"></script>
+<script src="js/dashboard.js"></script>
+<script>
+  requireAuth(() => {
+    renderShell("Dashboard");
+    document.getElementById("pageContent").innerHTML = document.getElementById("dashboardTemplate").innerHTML;
+    initDashboard();
+  });
+</script>
+</body>
+</html>
