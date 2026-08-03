@@ -15,6 +15,7 @@ function initBukuPage() {
   document.getElementById("searchBuku").addEventListener("input", () => renderTabelBuku());
   document.getElementById("filterStatusBuku").addEventListener("change", () => renderTabelBuku());
   document.getElementById("btnCetakSemuaLabel").addEventListener("click", cetakSemuaLabel);
+  document.getElementById("btnUnduhSemuaLabel").addEventListener("click", unduhSemuaLabel);
 
   muatDaftarBuku();
 }
@@ -140,6 +141,13 @@ function lihatLabelBuku(docId) {
     window.print();
   };
 
+  document.getElementById("btnUnduhLabelPng").onclick = () => {
+    unduhElemenSebagaiGambar(preview, `label-buku-${b.id}.png`, "png");
+  };
+  document.getElementById("btnUnduhLabelJpg").onclick = () => {
+    unduhElemenSebagaiGambar(preview, `label-buku-${b.id}.jpg`, "jpg");
+  };
+
   new bootstrap.Modal(document.getElementById("modalLabel")).show();
 }
 
@@ -167,4 +175,20 @@ function cetakSemuaLabel() {
   area.style.gap = "10px";
   daftarBukuCache.forEach(b => area.appendChild(buatLabelElemen(b)));
   window.print();
+}
+
+async function unduhSemuaLabel() {
+  if (daftarBukuCache.length === 0) {
+    showToast("Belum ada data buku untuk diunduh.", "warning");
+    return;
+  }
+  const area = document.getElementById("printArea");
+  area.innerHTML = "";
+  area.style.display = "flex";
+  area.style.flexWrap = "wrap";
+  area.style.gap = "10px";
+  daftarBukuCache.forEach(b => area.appendChild(buatLabelElemen(b)));
+
+  showToast("Menyiapkan gambar, mohon tunggu...", "info");
+  await unduhElemenSebagaiGambar(area, "semua-label-buku.png", "png");
 }

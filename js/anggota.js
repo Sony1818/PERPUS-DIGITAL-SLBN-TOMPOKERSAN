@@ -18,6 +18,7 @@ function initAnggotaPage() {
   document.getElementById("formAnggota").addEventListener("submit", simpanAnggota);
   document.getElementById("searchAnggota").addEventListener("input", (e) => renderTabelAnggota(e.target.value));
   document.getElementById("btnCetakSemuaKartu").addEventListener("click", cetakSemuaKartu);
+  document.getElementById("btnUnduhSemuaKartu").addEventListener("click", unduhSemuaKartu);
 
   muatDaftarAnggota();
 }
@@ -140,6 +141,13 @@ function lihatKartuAnggota(docId) {
     window.print();
   };
 
+  document.getElementById("btnUnduhKartuPng").onclick = () => {
+    unduhElemenSebagaiGambar(preview, `kartu-anggota-${a.id}.png`, "png");
+  };
+  document.getElementById("btnUnduhKartuJpg").onclick = () => {
+    unduhElemenSebagaiGambar(preview, `kartu-anggota-${a.id}.jpg`, "jpg");
+  };
+
   new bootstrap.Modal(document.getElementById("modalKartu")).show();
 }
 
@@ -174,4 +182,20 @@ function cetakSemuaKartu() {
   area.style.gap = "12px";
   daftarAnggotaCache.forEach(a => area.appendChild(buatKartuElemen(a)));
   window.print();
+}
+
+async function unduhSemuaKartu() {
+  if (daftarAnggotaCache.length === 0) {
+    showToast("Belum ada data anggota untuk diunduh.", "warning");
+    return;
+  }
+  const area = document.getElementById("printArea");
+  area.innerHTML = "";
+  area.style.display = "flex";
+  area.style.flexWrap = "wrap";
+  area.style.gap = "12px";
+  daftarAnggotaCache.forEach(a => area.appendChild(buatKartuElemen(a)));
+
+  showToast("Menyiapkan gambar, mohon tunggu...", "info");
+  await unduhElemenSebagaiGambar(area, "semua-kartu-anggota.png", "png");
 }

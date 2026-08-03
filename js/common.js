@@ -182,3 +182,28 @@ function exportToExcel(data, filename = "data.xlsx", sheetName = "Sheet1") {
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
   XLSX.writeFile(wb, filename);
 }
+
+/* =========================================================
+   Unduh elemen (kartu anggota / label buku) sebagai gambar PNG/JPG
+   Membutuhkan library html2canvas (dimuat lewat CDN di halaman terkait).
+   Hanya elemen yang ditangkap (bukan seluruh layar).
+   ========================================================= */
+async function unduhElemenSebagaiGambar(elemen, namaFile, format = "png") {
+  if (!elemen) return;
+  try {
+    const canvas = await html2canvas(elemen, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true
+    });
+    const mime = format === "jpg" ? "image/jpeg" : "image/png";
+    const dataUrl = canvas.toDataURL(mime, 0.95);
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = namaFile;
+    a.click();
+  } catch (err) {
+    console.error(err);
+    showToast("Gagal membuat gambar: " + err.message, "danger");
+  }
+}

@@ -14,6 +14,7 @@ async function initDashboard() {
     muatBukuTerlambat()
   ]);
   muatBackupRestoreHandler();
+  muatKartuLoginHandler();
 }
 
 async function muatStatistik() {
@@ -171,4 +172,61 @@ async function restoreData(e) {
   } finally {
     e.target.value = "";
   }
+}
+
+/* =========================================================
+   Kartu Login Petugas (login via scan QR di halaman index.html)
+   ========================================================= */
+
+function muatKartuLoginHandler() {
+  const form = document.getElementById("formKartuLogin");
+  if (!form) return;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const nama = document.getElementById("loginKartuNama").value.trim();
+    const email = document.getElementById("loginKartuEmail").value.trim();
+    const password = document.getElementById("loginKartuPassword").value;
+
+    if (!nama || !email || !password) return;
+
+    const payload = "LOGINPETUGAS::" + btoa(email + ":" + password);
+
+    const preview = document.getElementById("kartuLoginPreview");
+    preview.innerHTML = "";
+    preview.appendChild(buatKartuLoginElemen(nama, email, payload));
+
+    document.getElementById("btnCetakKartuLogin").onclick = () => {
+      const area = document.getElementById("printArea");
+      area.innerHTML = "";
+      area.appendChild(buatKartuLoginElemen(nama, email, payload));
+      window.print();
+    };
+
+    new bootstrap.Modal(document.getElementById("modalKartuLogin")).show();
+
+    // Kosongkan kata sandi dari form segera setelah QR dibuat (tidak disimpan ke mana pun)
+    document.getElementById("loginKartuPassword").value = "";
+  });
+}
+
+function buatKartuLoginElemen(nama, email, payload) {
+  const card = document.createElement("div");
+  card.className = "print-card";
+  card.style.background = "linear-gradient(135deg, var(--accent), var(--accent-dark))";
+
+  const qrBox = document.createElement("div");
+  qrBox.className = "qr-box";
+  const qrWrap = document.createElement("div");
+  new QRCode(qrWrap, { text: payload, width: 90, height: 90, correctLevel: QRCode.CorrectLevel.M });
+  qrBox.appendChild(qrWrap);
+
+  card.innerHTML = `
+    <div class="info">
+      <span>KARTU LOGIN PETUGAS</span>
+      <strong>${nama}</strong>
+      <span>${email}</span>
+      <span>Scan di halaman login untuk masuk otomatis</span>
+    </div>`;
+  card.prepend(qrBox);
+  return card;
 }

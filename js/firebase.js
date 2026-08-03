@@ -9,13 +9,12 @@
    ========================================================= */
 
 const firebaseConfig = {
-   apiKey: "AIzaSyBhNiQOIGRu7j6yZ6WbJx8Gk4YsXUqOono",
-  authDomain: "perpustakaan-e19c8.firebaseapp.com",
-  projectId: "perpustakaan-e19c8",
-  storageBucket: "perpustakaan-e19c8.firebasestorage.app",
-  messagingSenderId: "145012738441",
-  appId: "1:145012738441:web:612b4c026f9c46e806f958",
-  measurementId: "G-3BVXS6SHVY"
+  apiKey: "GANTI_DENGAN_API_KEY",
+  authDomain: "GANTI_DENGAN_PROJECT.firebaseapp.com",
+  projectId: "GANTI_DENGAN_PROJECT_ID",
+  storageBucket: "GANTI_DENGAN_PROJECT.appspot.com",
+  messagingSenderId: "GANTI_DENGAN_SENDER_ID",
+  appId: "GANTI_DENGAN_APP_ID"
 };
 
 // Inisialisasi (menggunakan Firebase compat SDK, dimuat lewat CDN di setiap halaman)
