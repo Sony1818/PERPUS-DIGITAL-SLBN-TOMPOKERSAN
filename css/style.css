@@ -347,11 +347,34 @@ a:hover{ color: var(--primary-dark); }
 @media print{
   .no-print{ display: none !important; }
   body{ background: #fff; }
-  .print-area{ display: block !important; }
+  .print-area{ position: static !important; left: auto !important; }
 }
-.print-area{ display: none; }
+/* Tetap dirender (bukan display:none) agar bisa ditangkap sebagai gambar (html2canvas),
+   tapi diposisikan di luar area pandang layar sehingga tidak terlihat pengguna. */
+.print-area{
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  background: #fff;
+  padding: 16px;
+}
 
 /* ---------- Login ---------- */
+#loginTab .nav-link{
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+  font-weight: 600;
+  padding: .55rem .5rem;
+}
+#loginTab .nav-link.active{
+  background: var(--primary);
+  color: #fff;
+}
+#readerLogin{
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
 .login-wrap{
   min-height: 100vh;
   display: flex;
