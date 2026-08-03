@@ -202,6 +202,11 @@ function muatKartuLoginHandler() {
       window.print();
     };
 
+    document.getElementById("btnUnduhKartuLoginPng").onclick = () => {
+      const namaFile = "kartu-login-" + email.split("@")[0].replace(/[^a-z0-9]/gi, "-") + ".png";
+      unduhElemenSebagaiGambar(preview, namaFile, "png");
+    };
+
     new bootstrap.Modal(document.getElementById("modalKartuLogin")).show();
 
     // Kosongkan kata sandi dari form segera setelah QR dibuat (tidak disimpan ke mana pun)
