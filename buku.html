@@ -21,9 +21,9 @@
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <select class="form-select" id="filterStatusBuku" style="max-width:160px;">
-        <option value="">Semua Status</option>
-        <option value="Tersedia">Tersedia</option>
-        <option value="Dipinjam">Dipinjam</option>
+        <option value="">Semua Stok</option>
+        <option value="Tersedia">Ada yang Tersedia</option>
+        <option value="Habis">Stok Habis</option>
       </select>
       <button class="btn btn-outline-secondary" id="btnCetakSemuaLabel"><i class="bi bi-printer"></i> Cetak Label Massal</button>
       <button class="btn btn-outline-secondary" id="btnUnduhSemuaLabel"><i class="bi bi-download"></i> Unduh Semua (PNG)</button>
@@ -38,7 +38,7 @@
       <table class="table table-hover align-middle mb-0">
         <thead>
           <tr>
-            <th>ID Buku</th><th>Judul</th><th>Penulis</th><th>Kategori</th><th>Status</th><th class="text-end">Aksi</th>
+            <th>ID Buku</th><th>Judul</th><th>Penulis</th><th>Kategori</th><th>Stok</th><th class="text-end">Aksi</th>
           </tr>
         </thead>
         <tbody id="tabelBuku"></tbody>
@@ -83,6 +83,11 @@
           <div class="mb-3">
             <label class="form-label">Kategori</label>
             <input type="text" class="form-control" id="bukuKategori" placeholder="Contoh: Fiksi, Sains, Sejarah">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Jumlah Buku (eksemplar)</label>
+            <input type="number" class="form-control" id="bukuJumlah" min="1" value="1" required>
+            <div class="form-text" id="bantuanJumlahBuku">Total eksemplar fisik untuk judul ini. Satu QR ini dipakai bersama untuk semua eksemplarnya.</div>
           </div>
         </div>
         <div class="modal-footer">
