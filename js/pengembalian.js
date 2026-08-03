@@ -192,7 +192,18 @@ async function prosesKembalikanBuku() {
       keterlambatanHari
     });
 
-    await booksRef.doc(bukuTerpilihKembali.docId).update({ status: "Tersedia" });
+    // Ambil data buku terbaru agar penambahan stok akurat & tidak melebihi jumlah total
+    const bukuSnap = await booksRef.doc(bukuTerpilihKembali.docId).get();
+    const dataBukuTerbaru = bukuSnap.data() || {};
+    const jumlah = typeof dataBukuTerbaru.jumlah === "number" ? dataBukuTerbaru.jumlah : 1;
+    const tersediaSaatIni = typeof dataBukuTerbaru.tersedia === "number" ? dataBukuTerbaru.tersedia : 0;
+    const tersediaBaru = Math.min(tersediaSaatIni + 1, jumlah);
+
+    await booksRef.doc(bukuTerpilihKembali.docId).update({
+      jumlah: jumlah,
+      tersedia: tersediaBaru,
+      status: "Tersedia"
+    });
 
     const pesan = keterlambatanHari > 0
       ? `Pengembalian berhasil dicatat. Terlambat ${keterlambatanHari} hari.`

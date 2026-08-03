@@ -1,5 +1,5 @@
 /* =========================================================
-   buku.js - Manajemen Data Buku
+   buku.js - Manajemen Data Buku (dengan stok/jumlah eksemplar)
    ========================================================= */
 
 let daftarBukuCache = [];
@@ -8,6 +8,9 @@ function initBukuPage() {
   document.getElementById("btnTambahBuku").addEventListener("click", () => {
     document.getElementById("formBuku").reset();
     document.getElementById("bukuDocId").value = "";
+    document.getElementById("bukuJumlah").value = 1;
+    document.getElementById("bantuanJumlahBuku").textContent =
+      "Total eksemplar fisik untuk judul ini. Satu QR ini dipakai bersama untuk semua eksemplarnya.";
     document.getElementById("modalBukuTitle").textContent = "Tambah Buku";
   });
 
@@ -18,6 +21,16 @@ function initBukuPage() {
   document.getElementById("btnUnduhSemuaLabel").addEventListener("click", unduhSemuaLabel);
 
   muatDaftarBuku();
+}
+
+/* ---------- Helper stok (kompatibel dengan data lama yang belum punya field jumlah/tersedia) ---------- */
+function ambilJumlahBuku(b) {
+  return typeof b.jumlah === "number" ? b.jumlah : 1;
+}
+function ambilTersediaBuku(b) {
+  if (typeof b.tersedia === "number") return b.tersedia;
+  // Data lama: pakai field status sebagai fallback
+  return b.status === "Dipinjam" ? 0 : 1;
 }
 
 function muatDaftarBuku() {
@@ -37,19 +50,27 @@ function renderTabelBuku() {
 
   const data = daftarBukuCache.filter(b => {
     const cocokKw = !kw || b.judul.toLowerCase().includes(kw) || b.id.toLowerCase().includes(kw);
-    const cocokStatus = !filterStatus || b.status === filterStatus;
+    const tersedia = ambilTersediaBuku(b);
+    const cocokStatus = !filterStatus
+      || (filterStatus === "Tersedia" && tersedia > 0)
+      || (filterStatus === "Habis" && tersedia <= 0);
     return cocokKw && cocokStatus;
   });
 
   tbody.innerHTML = "";
   data.forEach(b => {
+    const jumlah = ambilJumlahBuku(b);
+    const tersedia = ambilTersediaBuku(b);
+    const badgeClass = tersedia > 0 ? "badge-status-tersedia" : "badge-status-dipinjam";
+    const stokLabel = tersedia > 0 ? `${tersedia} / ${jumlah} tersedia` : `0 / ${jumlah} (semua dipinjam)`;
+
     tbody.innerHTML += `
       <tr>
         <td><code>${b.id}</code></td>
         <td>${b.judul}</td>
         <td>${b.penulis || "-"}</td>
         <td>${b.kategori || "-"}</td>
-        <td>${badgeStatus(b.status)}</td>
+        <td><span class="badge ${badgeClass}">${stokLabel}</span></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-secondary" onclick="lihatLabelBuku('${b.docId}')" title="Lihat QR"><i class="bi bi-qr-code"></i></button>
           <button class="btn btn-sm btn-outline-primary" onclick="editBuku('${b.docId}')" title="Edit"><i class="bi bi-pencil"></i></button>
@@ -70,10 +91,32 @@ async function simpanBuku(e) {
   const penulis = document.getElementById("bukuPenulis").value.trim();
   const penerbit = document.getElementById("bukuPenerbit").value.trim();
   const kategori = document.getElementById("bukuKategori").value.trim();
+  const jumlahBaru = parseInt(document.getElementById("bukuJumlah").value, 10);
+
+  if (!jumlahBaru || jumlahBaru < 1) {
+    showToast("Jumlah buku minimal 1.", "danger");
+    return;
+  }
 
   try {
     if (docId) {
-      await booksRef.doc(docId).update({ id, judul, penulis, penerbit, kategori });
+      const bLama = daftarBukuCache.find(x => x.docId === docId);
+      const jumlahLama = ambilJumlahBuku(bLama);
+      const tersediaLama = ambilTersediaBuku(bLama);
+      const sedangDipinjam = jumlahLama - tersediaLama; // eksemplar yg lagi di luar
+
+      if (jumlahBaru < sedangDipinjam) {
+        showToast(`Tidak bisa mengubah jumlah jadi ${jumlahBaru} — masih ada ${sedangDipinjam} eksemplar yang sedang dipinjam.`, "danger");
+        return;
+      }
+
+      const tersediaBaru = jumlahBaru - sedangDipinjam;
+      const statusBaru = tersediaBaru > 0 ? "Tersedia" : "Dipinjam";
+
+      await booksRef.doc(docId).update({
+        id, judul, penulis, penerbit, kategori,
+        jumlah: jumlahBaru, tersedia: tersediaBaru, status: statusBaru
+      });
       showToast("Data buku berhasil diperbarui.");
     } else {
       const dup = await booksRef.where("id", "==", id).get();
@@ -81,7 +124,10 @@ async function simpanBuku(e) {
         showToast("ID Buku sudah digunakan.", "danger");
         return;
       }
-      await booksRef.add({ id, judul, penulis, penerbit, kategori, status: "Tersedia" });
+      await booksRef.add({
+        id, judul, penulis, penerbit, kategori,
+        jumlah: jumlahBaru, tersedia: jumlahBaru, status: "Tersedia"
+      });
       showToast("Buku baru berhasil ditambahkan.");
     }
     bootstrap.Modal.getInstance(document.getElementById("modalBuku")).hide();
@@ -93,23 +139,35 @@ async function simpanBuku(e) {
 function editBuku(docId) {
   const b = daftarBukuCache.find(x => x.docId === docId);
   if (!b) return;
+  const jumlah = ambilJumlahBuku(b);
+  const tersedia = ambilTersediaBuku(b);
+  const sedangDipinjam = jumlah - tersedia;
+
   document.getElementById("bukuDocId").value = b.docId;
   document.getElementById("bukuId").value = b.id;
   document.getElementById("bukuJudul").value = b.judul;
   document.getElementById("bukuPenulis").value = b.penulis || "";
   document.getElementById("bukuPenerbit").value = b.penerbit || "";
   document.getElementById("bukuKategori").value = b.kategori || "";
+  document.getElementById("bukuJumlah").value = jumlah;
+  document.getElementById("bantuanJumlahBuku").textContent = sedangDipinjam > 0
+    ? `Saat ini ${sedangDipinjam} eksemplar sedang dipinjam — jumlah tidak bisa diubah menjadi kurang dari ${sedangDipinjam}.`
+    : "Total eksemplar fisik untuk judul ini. Satu QR ini dipakai bersama untuk semua eksemplarnya.";
   document.getElementById("modalBukuTitle").textContent = "Edit Buku";
   new bootstrap.Modal(document.getElementById("modalBuku")).show();
 }
 
 async function hapusBuku(docId) {
   const b = daftarBukuCache.find(x => x.docId === docId);
-  if (b && b.status === "Dipinjam") {
-    showToast("Buku sedang dipinjam dan tidak bisa dihapus.", "warning");
-    return;
+  if (b) {
+    const jumlah = ambilJumlahBuku(b);
+    const tersedia = ambilTersediaBuku(b);
+    if (tersedia < jumlah) {
+      showToast("Masih ada eksemplar yang sedang dipinjam, tidak bisa dihapus.", "warning");
+      return;
+    }
   }
-  if (!confirm("Yakin ingin menghapus buku ini?")) return;
+  if (!confirm("Yakin ingin menghapus buku ini beserta seluruh datanya?")) return;
   try {
     await booksRef.doc(docId).delete();
     showToast("Buku berhasil dihapus.");
@@ -152,9 +210,10 @@ function lihatLabelBuku(docId) {
 }
 
 function buatLabelElemen(b) {
+  const jumlah = ambilJumlahBuku(b);
   const label = document.createElement("div");
   label.className = "label-book";
-  label.innerHTML = `<div style="font-size:.65rem;opacity:.75;">SLBN TOMPOKERSAN LUMAJANG</div><strong>${b.judul}</strong><br>`;
+  label.innerHTML = `<div style="font-size:.65rem;opacity:.75;">SLBN TOMPOKERSAN LUMAJANG</div><strong>${b.judul}</strong><br><span style="font-size:.68rem;opacity:.8;">${jumlah} eksemplar</span><br>`;
   label.appendChild(buatElemenQR(b.id, 100));
   const idText = document.createElement("div");
   idText.textContent = "ID: " + b.id;

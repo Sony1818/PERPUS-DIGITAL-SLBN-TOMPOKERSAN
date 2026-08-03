@@ -119,11 +119,13 @@ async function verifikasiBukuPinjam(kode) {
   }
   const doc = snap.docs[0];
   const buku = { docId: doc.id, ...doc.data() };
+  const jumlah = typeof buku.jumlah === "number" ? buku.jumlah : 1;
+  const tersedia = typeof buku.tersedia === "number" ? buku.tersedia : (buku.status === "Dipinjam" ? 0 : 1);
 
-  if (buku.status === "Dipinjam") {
+  if (tersedia <= 0) {
     document.getElementById("infoBuku").innerHTML =
-      `<span class="text-danger">Buku "${buku.judul}" sedang dipinjam dan belum tersedia.</span>`;
-    showToast("Buku sedang dipinjam.", "danger");
+      `<span class="text-danger">Stok buku "${buku.judul}" habis — semua ${jumlah} eksemplar sedang dipinjam.</span>`;
+    showToast("Stok buku habis.", "danger");
     return;
   }
 
@@ -133,7 +135,7 @@ async function verifikasiBukuPinjam(kode) {
       <div class="avatar-circle bg-icon-orange" style="background:var(--accent);"><i class="bi bi-book"></i></div>
       <div>
         <strong>${buku.judul}</strong><br>
-        <span class="text-muted-soft small">${buku.penulis || "-"} • ID: ${buku.id} • ${badgeStatus(buku.status)}</span>
+        <span class="text-muted-soft small">${buku.penulis || "-"} • ID: ${buku.id} • Tersisa ${tersedia} dari ${jumlah} eksemplar</span>
       </div>
     </div>`;
   document.getElementById("stepBuku").classList.add("done");
@@ -148,10 +150,14 @@ async function prosesPinjamBuku() {
   btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Memproses...`;
 
   try {
-    // Cek ulang status buku agar tidak double-booking
+    // Cek ulang stok agar tidak double-booking
     const ceklulang = await booksRef.doc(bukuTerpilihPinjam.docId).get();
-    if (ceklulang.data().status === "Dipinjam") {
-      showToast("Buku baru saja dipinjam oleh orang lain.", "danger");
+    const dataTerbaru = ceklulang.data();
+    const jumlah = typeof dataTerbaru.jumlah === "number" ? dataTerbaru.jumlah : 1;
+    const tersediaTerbaru = typeof dataTerbaru.tersedia === "number" ? dataTerbaru.tersedia : (dataTerbaru.status === "Dipinjam" ? 0 : 1);
+
+    if (tersediaTerbaru <= 0) {
+      showToast("Stok buku baru saja habis dipinjam orang lain.", "danger");
       resetAlurPinjam();
       return;
     }
@@ -168,7 +174,12 @@ async function prosesPinjamBuku() {
       status: "Dipinjam"
     });
 
-    await booksRef.doc(bukuTerpilihPinjam.docId).update({ status: "Dipinjam" });
+    const tersediaBaru = tersediaTerbaru - 1;
+    await booksRef.doc(bukuTerpilihPinjam.docId).update({
+      jumlah: jumlah,
+      tersedia: tersediaBaru,
+      status: tersediaBaru > 0 ? "Tersedia" : "Dipinjam"
+    });
 
     showToast(`Peminjaman berhasil: ${bukuTerpilihPinjam.judul} oleh ${anggotaTerpilihPinjam.nama}`);
     resetAlurPinjam();

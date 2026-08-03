@@ -25,12 +25,15 @@ async function muatStatistik() {
       transactionsRef.get()
     ]);
 
-    const totalBuku = booksSnap.size;
     const totalAnggota = membersSnap.size;
-    let dipinjam = 0, tersedia = 0;
+    let totalBuku = 0, dipinjam = 0, tersedia = 0;
     booksSnap.forEach(doc => {
       const b = doc.data();
-      if (b.status === "Dipinjam") dipinjam++; else tersedia++;
+      const jumlah = typeof b.jumlah === "number" ? b.jumlah : 1;
+      const tersediaBuku = typeof b.tersedia === "number" ? b.tersedia : (b.status === "Dipinjam" ? 0 : 1);
+      totalBuku += jumlah;
+      tersedia += tersediaBuku;
+      dipinjam += (jumlah - tersediaBuku);
     });
 
     const mulaiHariIni = awalHariIni();
@@ -51,6 +54,7 @@ async function muatStatistik() {
     const guru = [];
     membersSnap.forEach(d => { if (d.data().jenis === "Guru") guru.push(d); });
     document.getElementById("ringkasanCepat").innerHTML = `
+      <li><i class="bi bi-journals"></i> ${booksSnap.size} judul buku terdaftar</li>
       <li><i class="bi bi-person-badge"></i> ${guru.length} anggota berstatus Guru</li>
       <li><i class="bi bi-mortarboard"></i> ${totalAnggota - guru.length} anggota berstatus Siswa</li>
       <li><i class="bi bi-journal-check"></i> ${txSnap.size} total transaksi tercatat</li>
