@@ -8,9 +8,9 @@ Dirancang agar mudah digunakan oleh guru, siswa, dan petugas perpustakaan — te
 
 ## ✨ Fitur
 
-- Login admin/petugas (Firebase Authentication)
-- Data anggota (Guru & Siswa) + QR Code otomatis + cetak kartu anggota
-- Data buku + QR Code otomatis + cetak label buku (satuan/massal)
+- Login admin/petugas (Firebase Authentication) — via email/sandi **atau** scan Kartu Login Petugas (QR)
+- Data anggota (Guru & Siswa) + QR Code otomatis + cetak **atau unduh PNG/JPG** kartu anggota (satuan/massal)
+- Data buku + QR Code otomatis + cetak **atau unduh PNG/JPG** label buku (satuan/massal)
 - Scan peminjaman via kamera HP/webcam (2 langkah: scan anggota → scan buku)
 - Scan pengembalian via kamera + deteksi keterlambatan otomatis
 - Dashboard statistik real-time + notifikasi buku terlambat
@@ -133,13 +133,14 @@ Lalu buka `http://localhost:8080`.
 
 ## 📱 4. Panduan Pemakaian Singkat
 
-1. **Login** dengan akun petugas yang dibuat di Firebase Authentication.
+1. **Login** dengan akun petugas yang dibuat di Firebase Authentication — atau tap tab **"Scan Kartu Petugas"** di halaman login lalu arahkan kamera ke Kartu Login yang sudah dicetak (lihat poin 8 di bawah).
 2. Tambahkan data di **Data Anggota** dan **Data Buku** terlebih dahulu.
 3. Cetak **kartu anggota** (menu Data Anggota) dan **label buku** (menu Data Buku) — bisa satuan atau massal.
 4. Gunakan menu **Peminjaman**: scan kartu anggota → scan QR buku → klik "Pinjam Buku".
 5. Gunakan menu **Pengembalian**: scan kartu anggota → scan QR buku yang dikembalikan → klik "Kembalikan Buku". Sistem otomatis menghitung keterlambatan (default: batas pinjam **7 hari**, dapat diubah di `js/firebase.js` pada variabel `BATAS_HARI_PINJAM`).
 6. Pantau semuanya lewat **Dashboard**, dan lihat/​filter/​export riwayat lewat menu **Riwayat**.
 7. Jika kamera HP tidak mau menyala, gunakan tombol **"Ganti Kamera"** (untuk memilih kamera depan/belakang) atau **"Input Manual"** untuk mengetik ID secara manual.
+8. **Login cepat via QR**: buka menu **Dashboard → Kartu Login Petugas**, isi nama, email, dan sandi akun (akun harus sudah ada di Firebase Authentication), lalu klik "Buat Kartu Login" dan cetak. Selanjutnya petugas cukup memilih tab **"Scan Kartu Petugas"** di halaman login dan mengarahkan kamera ke kartu tersebut — tidak perlu mengetik email/sandi lagi.
 
 ---
 
@@ -147,4 +148,6 @@ Lalu buka `http://localhost:8080`.
 
 - Untuk QR Code anggota/buku, isi field-nya adalah **ID Anggota** / **ID Buku** apa adanya (bukan URL). Saat dicetak dan discan kembali, aplikasi mencocokkan teks tersebut ke koleksi `members`/`books`.
 - Login akun petugas **tidak bisa didaftarkan sendiri lewat halaman ini** (agar tidak sembarang orang bisa membuat akun) — admin harus menambahkannya lewat Firebase Console.
+- **Kartu Login Petugas** memuat email & sandi akun dalam bentuk QR (disandikan base64, bukan terenkripsi) — perlakukan seperti kunci fisik: jangan difoto/disebarkan sembarangan, dan segera ganti sandi akun di Firebase Console jika kartu hilang. Fitur ini berbeda dari kartu anggota biasa (yang hanya memuat ID, dipakai untuk scan peminjaman/pengembalian) — QR login **tidak bisa** dipakai untuk pinjam/kembalikan buku, dan sebaliknya kartu anggota biasa **tidak bisa** dipakai untuk login.
 - Backup rutin disarankan lewat tombol **Backup Data** di Dashboard, terutama sebelum melakukan perubahan besar.
+- Tombol **"Unduh PNG/JPG"** pada kartu anggota/label buku hanya menangkap kartunya saja (bukan screenshot seluruh layar) — cocok untuk dikirim lewat WhatsApp/dicetak di tempat lain. Untuk unduhan "semua kartu/label sekaligus", hasilnya berupa **satu gambar** berisi susunan seluruh kartu/label (grid), bukan file terpisah per kartu.

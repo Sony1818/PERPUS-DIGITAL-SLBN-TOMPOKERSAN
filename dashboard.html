@@ -72,6 +72,32 @@
 
     <div class="col-lg-5">
       <div class="card-soft p-3 mb-3">
+        <h2 class="h6 mb-3"><i class="bi bi-qr-code"></i> Kartu Login Petugas</h2>
+        <p class="text-muted-soft small">
+          Buat kartu QR agar petugas/guru bisa <strong>login cukup dengan scan</strong>, tanpa mengetik email &amp; sandi.
+          Akun harus sudah dibuat lebih dulu di Firebase Console &gt; Authentication.
+        </p>
+        <form id="formKartuLogin" class="row g-2">
+          <div class="col-12">
+            <input type="text" class="form-control form-control-sm" id="loginKartuNama" placeholder="Nama (untuk label kartu)" required>
+          </div>
+          <div class="col-12">
+            <input type="email" class="form-control form-control-sm" id="loginKartuEmail" placeholder="Email akun Firebase Auth" required>
+          </div>
+          <div class="col-12">
+            <input type="password" class="form-control form-control-sm" id="loginKartuPassword" placeholder="Kata sandi akun" required>
+          </div>
+          <div class="col-12 d-grid">
+            <button type="submit" class="btn btn-brand btn-sm"><i class="bi bi-qr-code"></i> Buat Kartu Login</button>
+          </div>
+        </form>
+        <div class="alert alert-warning small mt-3 mb-0">
+          <i class="bi bi-shield-exclamation"></i>
+          Kartu ini memuat email &amp; sandi dalam bentuk QR — perlakukan seperti kunci fisik. Simpan baik-baik dan jangan difoto sembarang orang. Jika hilang, segera ganti sandi akun tersebut di Firebase Console.
+        </div>
+      </div>
+
+      <div class="card-soft p-3 mb-3">
         <h2 class="h6 mb-3"><i class="bi bi-hdd-stack"></i> Cadangkan &amp; Pulihkan Data</h2>
         <p class="text-muted-soft small">Backup menyimpan seluruh data anggota, buku, dan transaksi ke satu file JSON. Restore akan menambahkan/menimpa data dari file backup.</p>
         <div class="d-flex gap-2 flex-wrap">
@@ -93,7 +119,28 @@
   </div>
 </template>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<!-- Modal Preview Kartu Login Petugas -->
+<div class="modal fade" id="modalKartuLogin" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Kartu Login Petugas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="kartuLoginPreview" class="d-inline-block"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-brand" id="btnCetakKartuLogin"><i class="bi bi-printer"></i> Cetak</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="print-area" id="printArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

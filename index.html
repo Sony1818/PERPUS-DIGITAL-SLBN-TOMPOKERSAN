@@ -14,13 +14,27 @@
 <body>
 
 <div class="login-wrap">
-  <div class="login-card">
+  <div class="login-card" style="max-width:440px;">
     <div class="login-logo"><img src="assets/logo-sekolah.png" alt="Logo SLBN Tompokersan Lumajang"></div>
     <h1 class="text-center h4 mb-1">Perpustakaan SLB Negeri Tompokersan Lumajang</h1>
     <p class="text-center text-muted-soft mb-4">Masuk untuk mengelola peminjaman &amp; pengembalian buku</p>
 
+    <ul class="nav nav-pills nav-fill mb-3" id="loginTab">
+      <li class="nav-item">
+        <button class="nav-link active" id="tabEmailBtn" onclick="pilihMetodeLogin('email')">
+          <i class="bi bi-envelope"></i> Email &amp; Sandi
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="tabQrBtn" onclick="pilihMetodeLogin('qr')">
+          <i class="bi bi-qr-code-scan"></i> Scan Kartu Petugas
+        </button>
+      </li>
+    </ul>
+
     <div id="loginAlert" class="alert alert-danger d-none" role="alert"></div>
 
+    <!-- ===== Metode 1: Email & Password ===== -->
     <form id="loginForm">
       <div class="mb-3">
         <label class="form-label">Email</label>
@@ -36,6 +50,20 @@
       </button>
     </form>
 
+    <!-- ===== Metode 2: Scan QR Kartu Login Petugas ===== -->
+    <div id="loginQrWrapper" class="d-none">
+      <div id="readerLogin" class="mb-3"></div>
+      <div class="d-flex gap-2 mb-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="btnGantiKameraLogin">
+          <i class="bi bi-arrow-repeat"></i> Ganti Kamera
+        </button>
+      </div>
+      <p class="text-center text-muted-soft small mb-0">
+        Arahkan kamera ke <strong>Kartu Login Petugas</strong> (bukan kartu anggota biasa).
+        Kartu ini dibuat lewat menu Dashboard &gt; Kartu Login Petugas.
+      </p>
+    </div>
+
     <p class="text-center text-muted-soft small mt-4 mb-0">
       Akun hanya dibuat oleh admin melalui Firebase Console &gt; Authentication.
     </p>
@@ -45,6 +73,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="js/firebase.js"></script>
 <script>
   // Jika sudah login, langsung ke dashboard
@@ -52,32 +81,136 @@
     if (user) window.location.href = "dashboard.html";
   });
 
+  /* ---------- Metode Email & Password ---------- */
   document.getElementById("loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    prosesLoginEmailPassword(email, password);
+  });
+
+  function prosesLoginEmailPassword(email, password) {
     const alertBox = document.getElementById("loginAlert");
     const btn = document.getElementById("loginBtn");
     const spinner = document.getElementById("loginSpinner");
 
     alertBox.classList.add("d-none");
-    btn.disabled = true;
-    spinner.classList.remove("d-none");
+    if (btn) { btn.disabled = true; spinner.classList.remove("d-none"); }
 
-    auth.signInWithEmailAndPassword(email, password)
+    return auth.signInWithEmailAndPassword(email, password)
       .then(() => { window.location.href = "dashboard.html"; })
       .catch((err) => {
         let msg = "Email atau kata sandi salah.";
         if (err.code === "auth/too-many-requests") msg = "Terlalu banyak percobaan. Coba lagi nanti.";
-        if (err.code === "auth/invalid-email") msg = "Format email tidak valid.";
-        alertBox.textContent = msg;
-        alertBox.classList.remove("d-none");
+        if (err.code === "auth/invalid-email") msg = "Format email tidak valid / QR tidak dikenali.";
+        tampilkanErrorLogin(msg);
       })
       .finally(() => {
-        btn.disabled = false;
-        spinner.classList.add("d-none");
+        if (btn) { btn.disabled = false; spinner.classList.add("d-none"); }
       });
+  }
+
+  function tampilkanErrorLogin(msg) {
+    const alertBox = document.getElementById("loginAlert");
+    alertBox.textContent = msg;
+    alertBox.classList.remove("d-none");
+  }
+
+  /* ---------- Metode Scan QR Kartu Login Petugas ---------- */
+  let html5QrScannerLogin = null;
+  let daftarKameraLogin = [];
+  let indexKameraLogin = 0;
+  let scannerLoginAktif = false;
+
+  function pilihMetodeLogin(mode) {
+    document.getElementById("tabEmailBtn").classList.toggle("active", mode === "email");
+    document.getElementById("tabQrBtn").classList.toggle("active", mode === "qr");
+    document.getElementById("loginForm").classList.toggle("d-none", mode !== "email");
+    document.getElementById("loginQrWrapper").classList.toggle("d-none", mode !== "qr");
+    document.getElementById("loginAlert").classList.add("d-none");
+
+    if (mode === "qr" && !scannerLoginAktif) {
+      mulaiKameraLogin();
+    } else if (mode !== "qr" && scannerLoginAktif) {
+      hentikanKameraLogin();
+    }
+  }
+
+  async function mulaiKameraLogin() {
+    try {
+      daftarKameraLogin = await Html5Qrcode.getCameras();
+      if (!daftarKameraLogin || daftarKameraLogin.length === 0) {
+        tampilkanErrorLogin("Kamera tidak ditemukan di perangkat ini.");
+        return;
+      }
+      indexKameraLogin = daftarKameraLogin.findIndex(c => /back|rear|belakang/i.test(c.label));
+      if (indexKameraLogin < 0) indexKameraLogin = 0;
+
+      html5QrScannerLogin = new Html5Qrcode("readerLogin");
+      await jalankanKameraLogin();
+      scannerLoginAktif = true;
+    } catch (err) {
+      tampilkanErrorLogin("Gagal mengakses kamera: " + err);
+    }
+  }
+
+  async function jalankanKameraLogin() {
+    const cameraId = daftarKameraLogin[indexKameraLogin].id;
+    await html5QrScannerLogin.start(
+      cameraId,
+      { fps: 10, qrbox: { width: 230, height: 230 } },
+      (decodedText) => prosesHasilScanLogin(decodedText),
+      () => {}
+    );
+  }
+
+  async function hentikanKameraLogin() {
+    if (html5QrScannerLogin && scannerLoginAktif) {
+      try { await html5QrScannerLogin.stop(); } catch (e) {}
+      scannerLoginAktif = false;
+    }
+  }
+
+  document.getElementById("btnGantiKameraLogin").addEventListener("click", async () => {
+    if (daftarKameraLogin.length < 2) {
+      tampilkanErrorLogin("Hanya ada satu kamera tersedia.");
+      return;
+    }
+    indexKameraLogin = (indexKameraLogin + 1) % daftarKameraLogin.length;
+    await html5QrScannerLogin.stop();
+    await jalankanKameraLogin();
   });
+
+  let sedangMemprosesLogin = false;
+  async function prosesHasilScanLogin(teks) {
+    if (sedangMemprosesLogin) return;
+
+    // Format Kartu Login Petugas: "LOGINPETUGAS::<base64(email:password)>"
+    const PREFIX = "LOGINPETUGAS::";
+    if (!teks.startsWith(PREFIX)) {
+      tampilkanErrorLogin("QR ini bukan Kartu Login Petugas. Gunakan kartu login yang dibuat lewat Dashboard.");
+      return;
+    }
+
+    sedangMemprosesLogin = true;
+    try {
+      const encoded = teks.slice(PREFIX.length);
+      const decoded = atob(encoded);
+      const pemisah = decoded.indexOf(":");
+      if (pemisah === -1) {
+        tampilkanErrorLogin("Format Kartu Login tidak valid.");
+        return;
+      }
+      const email = decoded.slice(0, pemisah);
+      const password = decoded.slice(pemisah + 1);
+      await hentikanKameraLogin();
+      await prosesLoginEmailPassword(email, password);
+    } catch (err) {
+      tampilkanErrorLogin("Gagal membaca Kartu Login: format tidak valid.");
+    } finally {
+      setTimeout(() => { sedangMemprosesLogin = false; }, 1500);
+    }
+  }
 </script>
 </body>
 </html>

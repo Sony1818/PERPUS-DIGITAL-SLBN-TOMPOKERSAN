@@ -19,8 +19,9 @@
       <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
       <input type="text" class="form-control" id="searchAnggota" placeholder="Cari nama atau ID anggota...">
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
       <button class="btn btn-outline-secondary" id="btnCetakSemuaKartu"><i class="bi bi-printer"></i> Cetak Semua Kartu</button>
+      <button class="btn btn-outline-secondary" id="btnUnduhSemuaKartu"><i class="bi bi-download"></i> Unduh Semua (PNG)</button>
       <button class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modalAnggota" id="btnTambahAnggota">
         <i class="bi bi-plus-lg"></i> Tambah Anggota
       </button>
@@ -96,8 +97,10 @@
       <div class="modal-body text-center">
         <div id="kartuPreview" class="d-inline-block"></div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer flex-wrap">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-outline-secondary" id="btnUnduhKartuJpg"><i class="bi bi-file-image"></i> Unduh JPG</button>
+        <button type="button" class="btn btn-outline-secondary" id="btnUnduhKartuPng"><i class="bi bi-file-image"></i> Unduh PNG</button>
         <button type="button" class="btn btn-brand" id="btnCetakKartuTunggal"><i class="bi bi-printer"></i> Cetak</button>
       </div>
     </div>
@@ -112,6 +115,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="js/firebase.js"></script>
 <script src="js/common.js"></script>
 <script src="js/anggota.js"></script>
