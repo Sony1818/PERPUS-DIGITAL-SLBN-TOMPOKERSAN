@@ -10,6 +10,7 @@ let sedangMemprosesPinjam = false;
 
 let anggotaTerpilihPinjam = null;
 let bukuTerpilihPinjam = null;
+let tersediaBukuPinjam = 0;
 
 function initPeminjamanPage() {
   document.getElementById("btnInputManual").addEventListener("click", () => {
@@ -22,6 +23,10 @@ function initPeminjamanPage() {
   document.getElementById("btnGantiKamera").addEventListener("click", gantiKameraPinjam);
   document.getElementById("btnPinjamBuku").addEventListener("click", prosesPinjamBuku);
   document.getElementById("btnResetScan").addEventListener("click", resetAlurPinjam);
+
+  document.getElementById("btnTambahJumlahPinjam").addEventListener("click", () => ubahJumlahPinjam(1));
+  document.getElementById("btnKurangiJumlahPinjam").addEventListener("click", () => ubahJumlahPinjam(-1));
+  document.getElementById("inputJumlahPinjam").addEventListener("change", () => ubahJumlahPinjam(0));
 
   mulaiKameraPinjam();
 }
@@ -91,11 +96,13 @@ async function prosesHasilScanPinjam(kode) {
 async function verifikasiAnggotaPinjam(kode) {
   const snap = await membersRef.where("id", "==", kode).limit(1).get();
   if (snap.empty) {
+    mainkanBunyiScan(false);
     showToast(`ID Anggota "${kode}" tidak ditemukan.`, "danger");
     return;
   }
   const doc = snap.docs[0];
   anggotaTerpilihPinjam = { docId: doc.id, ...doc.data() };
+  mainkanBunyiScan(true);
 
   document.getElementById("infoAnggota").innerHTML = `
     <div class="identity-card mt-2">
@@ -114,6 +121,7 @@ async function verifikasiAnggotaPinjam(kode) {
 async function verifikasiBukuPinjam(kode) {
   const snap = await booksRef.where("id", "==", kode).limit(1).get();
   if (snap.empty) {
+    mainkanBunyiScan(false);
     showToast(`ID Buku "${kode}" tidak ditemukan.`, "danger");
     return;
   }
@@ -123,13 +131,17 @@ async function verifikasiBukuPinjam(kode) {
   const tersedia = typeof buku.tersedia === "number" ? buku.tersedia : (buku.status === "Dipinjam" ? 0 : 1);
 
   if (tersedia <= 0) {
+    mainkanBunyiScan(false);
     document.getElementById("infoBuku").innerHTML =
       `<span class="text-danger">Stok buku "${buku.judul}" habis — semua ${jumlah} eksemplar sedang dipinjam.</span>`;
     showToast("Stok buku habis.", "danger");
     return;
   }
 
+  mainkanBunyiScan(true);
   bukuTerpilihPinjam = buku;
+  tersediaBukuPinjam = tersedia;
+
   document.getElementById("infoBuku").innerHTML = `
     <div class="identity-card mt-2">
       <div class="avatar-circle bg-icon-orange" style="background:var(--accent);"><i class="bi bi-book"></i></div>
@@ -139,12 +151,42 @@ async function verifikasiBukuPinjam(kode) {
       </div>
     </div>`;
   document.getElementById("stepBuku").classList.add("done");
+
+  // Tampilkan & siapkan input jumlah
+  const inputJumlah = document.getElementById("inputJumlahPinjam");
+  inputJumlah.value = 1;
+  inputJumlah.max = tersedia;
+  document.getElementById("wrapperJumlahPinjam").classList.remove("d-none");
+  document.getElementById("keteranganJumlahPinjam").textContent = `Maksimal ${tersedia} eksemplar untuk judul ini.`;
+
   document.getElementById("btnPinjamBuku").disabled = false;
+  perbaruiTeksTombolPinjam();
   showToast("Buku terverifikasi: " + buku.judul);
+}
+
+function ubahJumlahPinjam(delta) {
+  const input = document.getElementById("inputJumlahPinjam");
+  let nilai = parseInt(input.value, 10) || 1;
+  nilai += delta;
+  if (nilai < 1) nilai = 1;
+  if (tersediaBukuPinjam > 0 && nilai > tersediaBukuPinjam) {
+    nilai = tersediaBukuPinjam;
+    showToast(`Stok tersisa hanya ${tersediaBukuPinjam} eksemplar.`, "warning");
+  }
+  input.value = nilai;
+  perbaruiTeksTombolPinjam();
+}
+
+function perbaruiTeksTombolPinjam() {
+  const jumlah = parseInt(document.getElementById("inputJumlahPinjam").value, 10) || 1;
+  document.getElementById("btnPinjamBuku").innerHTML =
+    `<i class="bi bi-box-arrow-right"></i> Pinjam ${jumlah > 1 ? jumlah + " Buku" : "Buku"}`;
 }
 
 async function prosesPinjamBuku() {
   if (!anggotaTerpilihPinjam || !bukuTerpilihPinjam) return;
+  const jumlahDipinjam = parseInt(document.getElementById("inputJumlahPinjam").value, 10) || 1;
+
   const btn = document.getElementById("btnPinjamBuku");
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Memproses...`;
@@ -161,43 +203,59 @@ async function prosesPinjamBuku() {
       resetAlurPinjam();
       return;
     }
+    if (jumlahDipinjam > tersediaTerbaru) {
+      showToast(`Stok tersisa hanya ${tersediaTerbaru} eksemplar, tidak bisa meminjam ${jumlahDipinjam}.`, "danger");
+      resetAlurPinjam();
+      return;
+    }
 
-    await transactionsRef.add({
-      memberId: anggotaTerpilihPinjam.id,
-      memberName: anggotaTerpilihPinjam.nama,
-      memberJenis: anggotaTerpilihPinjam.jenis,
-      memberKelas: anggotaTerpilihPinjam.kelas || "",
-      bookId: bukuTerpilihPinjam.id,
-      bookTitle: bukuTerpilihPinjam.judul,
-      borrowDate: firebase.firestore.FieldValue.serverTimestamp(),
-      returnDate: null,
-      status: "Dipinjam"
-    });
+    // Buat satu transaksi terpisah untuk tiap eksemplar yang dipinjam
+    const batch = db.batch();
+    for (let i = 0; i < jumlahDipinjam; i++) {
+      const ref = transactionsRef.doc();
+      batch.set(ref, {
+        memberId: anggotaTerpilihPinjam.id,
+        memberName: anggotaTerpilihPinjam.nama,
+        memberJenis: anggotaTerpilihPinjam.jenis,
+        memberKelas: anggotaTerpilihPinjam.kelas || "",
+        bookId: bukuTerpilihPinjam.id,
+        bookTitle: bukuTerpilihPinjam.judul,
+        borrowDate: firebase.firestore.FieldValue.serverTimestamp(),
+        returnDate: null,
+        status: "Dipinjam"
+      });
+    }
 
-    const tersediaBaru = tersediaTerbaru - 1;
-    await booksRef.doc(bukuTerpilihPinjam.docId).update({
+    const tersediaBaru = tersediaTerbaru - jumlahDipinjam;
+    batch.update(booksRef.doc(bukuTerpilihPinjam.docId), {
       jumlah: jumlah,
       tersedia: tersediaBaru,
       status: tersediaBaru > 0 ? "Tersedia" : "Dipinjam"
     });
 
-    showToast(`Peminjaman berhasil: ${bukuTerpilihPinjam.judul} oleh ${anggotaTerpilihPinjam.nama}`);
+    await batch.commit();
+
+    showToast(`Peminjaman berhasil: ${jumlahDipinjam}x "${bukuTerpilihPinjam.judul}" oleh ${anggotaTerpilihPinjam.nama}`);
     resetAlurPinjam();
   } catch (err) {
     showToast("Gagal menyimpan peminjaman: " + err.message, "danger");
     btn.disabled = false;
   } finally {
-    btn.innerHTML = `<i class="bi bi-box-arrow-right"></i> Pinjam Buku`;
+    perbaruiTeksTombolPinjam();
   }
 }
 
 function resetAlurPinjam() {
   anggotaTerpilihPinjam = null;
   bukuTerpilihPinjam = null;
+  tersediaBukuPinjam = 0;
   modePinjam = "anggota";
   document.getElementById("infoAnggota").textContent = "Arahkan kamera ke kartu anggota (QR code guru/siswa).";
   document.getElementById("infoBuku").textContent = "Menunggu anggota terverifikasi...";
   document.getElementById("stepAnggota").classList.remove("done");
   document.getElementById("stepBuku").classList.remove("done");
+  document.getElementById("wrapperJumlahPinjam").classList.add("d-none");
+  document.getElementById("inputJumlahPinjam").value = 1;
   document.getElementById("btnPinjamBuku").disabled = true;
+  document.getElementById("btnPinjamBuku").innerHTML = `<i class="bi bi-box-arrow-right"></i> Pinjam Buku`;
 }

@@ -10,7 +10,7 @@ let sedangMemprosesKembali = false;
 
 let anggotaTerpilihKembali = null;
 let bukuTerpilihKembali = null;
-let transaksiAktifKembali = null;
+let daftarTransaksiAktifKembali = []; // semua transaksi Dipinjam utk kombinasi anggota+buku ini
 
 function initPengembalianPage() {
   document.getElementById("btnInputManual").addEventListener("click", () => {
@@ -23,6 +23,10 @@ function initPengembalianPage() {
   document.getElementById("btnGantiKamera").addEventListener("click", gantiKameraKembali);
   document.getElementById("btnKembalikanBuku").addEventListener("click", prosesKembalikanBuku);
   document.getElementById("btnResetScan").addEventListener("click", resetAlurKembali);
+
+  document.getElementById("btnTambahJumlahKembali").addEventListener("click", () => ubahJumlahKembali(1));
+  document.getElementById("btnKurangiJumlahKembali").addEventListener("click", () => ubahJumlahKembali(-1));
+  document.getElementById("inputJumlahKembali").addEventListener("change", () => ubahJumlahKembali(0));
 
   mulaiKameraKembali();
 }
@@ -91,11 +95,13 @@ async function prosesHasilScanKembali(kode) {
 async function verifikasiAnggotaKembali(kode) {
   const snap = await membersRef.where("id", "==", kode).limit(1).get();
   if (snap.empty) {
+    mainkanBunyiScan(false);
     showToast(`ID Anggota "${kode}" tidak ditemukan.`, "danger");
     return;
   }
   const doc = snap.docs[0];
   anggotaTerpilihKembali = { docId: doc.id, ...doc.data() };
+  mainkanBunyiScan(true);
 
   document.getElementById("infoAnggota").innerHTML = `
     <div class="identity-card mt-2">
@@ -114,119 +120,176 @@ async function verifikasiAnggotaKembali(kode) {
 async function verifikasiBukuKembali(kode) {
   const snapBuku = await booksRef.where("id", "==", kode).limit(1).get();
   if (snapBuku.empty) {
+    mainkanBunyiScan(false);
     showToast(`ID Buku "${kode}" tidak ditemukan.`, "danger");
     return;
   }
   const bukuDoc = snapBuku.docs[0];
   const buku = { docId: bukuDoc.id, ...bukuDoc.data() };
 
-  // Cari transaksi aktif (status Dipinjam) untuk kombinasi anggota + buku ini
+  // Cari SEMUA transaksi aktif (status Dipinjam) untuk kombinasi anggota + buku ini
   const snapTx = await transactionsRef
     .where("memberId", "==", anggotaTerpilihKembali.id)
     .where("bookId", "==", buku.id)
     .where("status", "==", "Dipinjam")
-    .limit(1)
     .get();
 
   if (snapTx.empty) {
+    mainkanBunyiScan(false);
     document.getElementById("infoBuku").innerHTML =
       `<span class="text-danger">Tidak ditemukan transaksi peminjaman aktif untuk buku "${buku.judul}" oleh anggota ini.</span>`;
     showToast("Transaksi peminjaman tidak ditemukan.", "danger");
     return;
   }
 
-  transaksiAktifKembali = { docId: snapTx.docs[0].id, ...snapTx.docs[0].data() };
+  mainkanBunyiScan(true);
+  // Urutkan dari yang paling lama dipinjam (paling berisiko terlambat) agar diprioritaskan saat dikembalikan
+  daftarTransaksiAktifKembali = snapTx.docs
+    .map(d => ({ docId: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const ta = a.borrowDate && a.borrowDate.toDate ? a.borrowDate.toDate().getTime() : 0;
+      const tb = b.borrowDate && b.borrowDate.toDate ? b.borrowDate.toDate().getTime() : 0;
+      return ta - tb;
+    });
   bukuTerpilihKembali = buku;
+
+  const jumlahDipinjamAnggotaIni = daftarTransaksiAktifKembali.length;
+  const transaksiTertua = daftarTransaksiAktifKembali[0];
 
   document.getElementById("infoBuku").innerHTML = `
     <div class="identity-card mt-2">
       <div class="avatar-circle" style="background:var(--accent);"><i class="bi bi-book"></i></div>
       <div>
         <strong>${buku.judul}</strong><br>
-        <span class="text-muted-soft small">ID: ${buku.id} • Dipinjam sejak ${formatTanggal(transaksiAktifKembali.borrowDate)}</span>
+        <span class="text-muted-soft small">ID: ${buku.id} • Sedang dipinjam anggota ini: ${jumlahDipinjamAnggotaIni} eksemplar (sejak ${formatTanggal(transaksiTertua.borrowDate)})</span>
       </div>
     </div>`;
   document.getElementById("stepBuku").classList.add("done");
 
-  // Cek keterlambatan
-  const alertBox = document.getElementById("alertTerlambat");
-  if (transaksiAktifKembali.borrowDate && transaksiAktifKembali.borrowDate.toDate) {
-    const batas = new Date(transaksiAktifKembali.borrowDate.toDate());
-    batas.setDate(batas.getDate() + BATAS_HARI_PINJAM);
-    const now = new Date();
-    if (now > batas) {
-      const hariTerlambat = Math.ceil((now - batas) / (1000 * 60 * 60 * 24));
-      alertBox.textContent = `⚠ Pengembalian terlambat ${hariTerlambat} hari dari batas waktu peminjaman.`;
-      alertBox.classList.remove("d-none");
-    } else {
-      alertBox.classList.add("d-none");
-    }
-  }
+  // Siapkan input jumlah
+  const inputJumlah = document.getElementById("inputJumlahKembali");
+  inputJumlah.value = 1;
+  inputJumlah.max = jumlahDipinjamAnggotaIni;
+  document.getElementById("wrapperJumlahKembali").classList.remove("d-none");
+  document.getElementById("keteranganJumlahKembali").textContent =
+    `Anggota ini sedang meminjam ${jumlahDipinjamAnggotaIni} eksemplar buku ini.`;
+
+  perbaruiPeringatanTerlambatKembali();
 
   document.getElementById("btnKembalikanBuku").disabled = false;
+  perbaruiTeksTombolKembali();
   showToast("Buku ditemukan: " + buku.judul);
 }
 
+function ubahJumlahKembali(delta) {
+  const input = document.getElementById("inputJumlahKembali");
+  const maksimal = daftarTransaksiAktifKembali.length || 1;
+  let nilai = parseInt(input.value, 10) || 1;
+  nilai += delta;
+  if (nilai < 1) nilai = 1;
+  if (nilai > maksimal) {
+    nilai = maksimal;
+    showToast(`Anggota ini hanya meminjam ${maksimal} eksemplar buku ini.`, "warning");
+  }
+  input.value = nilai;
+  perbaruiPeringatanTerlambatKembali();
+  perbaruiTeksTombolKembali();
+}
+
+function perbaruiTeksTombolKembali() {
+  const jumlah = parseInt(document.getElementById("inputJumlahKembali").value, 10) || 1;
+  document.getElementById("btnKembalikanBuku").innerHTML =
+    `<i class="bi bi-box-arrow-in-left"></i> Kembalikan ${jumlah > 1 ? jumlah + " Buku" : "Buku"}`;
+}
+
+/** Hitung keterlambatan (hari) untuk satu transaksi berdasarkan tanggal pinjamnya */
+function hitungKeterlambatanHari(transaksi) {
+  if (!transaksi.borrowDate || !transaksi.borrowDate.toDate) return 0;
+  const batas = new Date(transaksi.borrowDate.toDate());
+  batas.setDate(batas.getDate() + BATAS_HARI_PINJAM);
+  const now = new Date();
+  if (now <= batas) return 0;
+  return Math.ceil((now - batas) / (1000 * 60 * 60 * 24));
+}
+
+function perbaruiPeringatanTerlambatKembali() {
+  const jumlah = parseInt(document.getElementById("inputJumlahKembali").value, 10) || 1;
+  const dipilih = daftarTransaksiAktifKembali.slice(0, jumlah);
+  const jumlahTerlambat = dipilih.filter(t => hitungKeterlambatanHari(t) > 0).length;
+  const maksHari = Math.max(0, ...dipilih.map(hitungKeterlambatanHari));
+
+  const alertBox = document.getElementById("alertTerlambat");
+  if (jumlahTerlambat > 0) {
+    alertBox.textContent = `⚠ ${jumlahTerlambat} dari ${dipilih.length} eksemplar yang dikembalikan sudah terlambat (maks. ${maksHari} hari dari batas waktu).`;
+    alertBox.classList.remove("d-none");
+  } else {
+    alertBox.classList.add("d-none");
+  }
+}
+
 async function prosesKembalikanBuku() {
-  if (!anggotaTerpilihKembali || !bukuTerpilihKembali || !transaksiAktifKembali) return;
+  if (!anggotaTerpilihKembali || !bukuTerpilihKembali || daftarTransaksiAktifKembali.length === 0) return;
+  const jumlahDikembalikan = parseInt(document.getElementById("inputJumlahKembali").value, 10) || 1;
+
   const btn = document.getElementById("btnKembalikanBuku");
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Memproses...`;
 
   try {
-    let statusAkhir = "Dikembalikan";
-    let keterlambatanHari = 0;
+    const transaksiDipilih = daftarTransaksiAktifKembali.slice(0, jumlahDikembalikan);
+    let totalTerlambat = 0;
 
-    if (transaksiAktifKembali.borrowDate && transaksiAktifKembali.borrowDate.toDate) {
-      const batas = new Date(transaksiAktifKembali.borrowDate.toDate());
-      batas.setDate(batas.getDate() + BATAS_HARI_PINJAM);
-      const now = new Date();
-      if (now > batas) {
-        keterlambatanHari = Math.ceil((now - batas) / (1000 * 60 * 60 * 24));
-      }
-    }
-
-    await transactionsRef.doc(transaksiAktifKembali.docId).update({
-      returnDate: firebase.firestore.FieldValue.serverTimestamp(),
-      status: statusAkhir,
-      keterlambatanHari
+    const batch = db.batch();
+    transaksiDipilih.forEach(t => {
+      const keterlambatanHari = hitungKeterlambatanHari(t);
+      if (keterlambatanHari > 0) totalTerlambat++;
+      batch.update(transactionsRef.doc(t.docId), {
+        returnDate: firebase.firestore.FieldValue.serverTimestamp(),
+        status: "Dikembalikan",
+        keterlambatanHari
+      });
     });
 
     // Ambil data buku terbaru agar penambahan stok akurat & tidak melebihi jumlah total
     const bukuSnap = await booksRef.doc(bukuTerpilihKembali.docId).get();
     const dataBukuTerbaru = bukuSnap.data() || {};
-    const jumlah = typeof dataBukuTerbaru.jumlah === "number" ? dataBukuTerbaru.jumlah : 1;
+    const jumlahTotal = typeof dataBukuTerbaru.jumlah === "number" ? dataBukuTerbaru.jumlah : 1;
     const tersediaSaatIni = typeof dataBukuTerbaru.tersedia === "number" ? dataBukuTerbaru.tersedia : 0;
-    const tersediaBaru = Math.min(tersediaSaatIni + 1, jumlah);
+    const tersediaBaru = Math.min(tersediaSaatIni + jumlahDikembalikan, jumlahTotal);
 
-    await booksRef.doc(bukuTerpilihKembali.docId).update({
-      jumlah: jumlah,
+    batch.update(booksRef.doc(bukuTerpilihKembali.docId), {
+      jumlah: jumlahTotal,
       tersedia: tersediaBaru,
       status: "Tersedia"
     });
 
-    const pesan = keterlambatanHari > 0
-      ? `Pengembalian berhasil dicatat. Terlambat ${keterlambatanHari} hari.`
-      : `Pengembalian berhasil dicatat. Tepat waktu.`;
-    showToast(pesan, keterlambatanHari > 0 ? "warning" : "success");
+    await batch.commit();
+
+    const pesan = totalTerlambat > 0
+      ? `Pengembalian ${jumlahDikembalikan} buku berhasil dicatat. ${totalTerlambat} di antaranya terlambat.`
+      : `Pengembalian ${jumlahDikembalikan} buku berhasil dicatat. Tepat waktu.`;
+    showToast(pesan, totalTerlambat > 0 ? "warning" : "success");
     resetAlurKembali();
   } catch (err) {
     showToast("Gagal memproses pengembalian: " + err.message, "danger");
     btn.disabled = false;
   } finally {
-    btn.innerHTML = `<i class="bi bi-box-arrow-in-left"></i> Kembalikan Buku`;
+    perbaruiTeksTombolKembali();
   }
 }
 
 function resetAlurKembali() {
   anggotaTerpilihKembali = null;
   bukuTerpilihKembali = null;
-  transaksiAktifKembali = null;
+  daftarTransaksiAktifKembali = [];
   modeKembali = "anggota";
   document.getElementById("infoAnggota").textContent = "Arahkan kamera ke kartu anggota yang mengembalikan buku.";
   document.getElementById("infoBuku").textContent = "Menunggu anggota terverifikasi...";
   document.getElementById("stepAnggota").classList.remove("done");
   document.getElementById("stepBuku").classList.remove("done");
+  document.getElementById("wrapperJumlahKembali").classList.add("d-none");
+  document.getElementById("inputJumlahKembali").value = 1;
   document.getElementById("alertTerlambat").classList.add("d-none");
   document.getElementById("btnKembalikanBuku").disabled = true;
+  document.getElementById("btnKembalikanBuku").innerHTML = `<i class="bi bi-box-arrow-in-left"></i> Kembalikan Buku`;
 }

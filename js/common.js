@@ -207,3 +207,29 @@ async function unduhElemenSebagaiGambar(elemen, namaFile, format = "png") {
     showToast("Gagal membuat gambar: " + err.message, "danger");
   }
 }
+
+/* =========================================================
+   Bunyi umpan balik saat scan QR (kartu anggota / buku)
+   Dibuat langsung lewat Web Audio API, tidak perlu file suara.
+   ========================================================= */
+function mainkanBunyiScan(sukses = true) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = sukses ? 880 : 260;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (sukses ? 0.15 : 0.3));
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (sukses ? 0.16 : 0.32));
+    osc.onended = () => ctx.close();
+  } catch (e) {
+    // Abaikan jika browser tidak mendukung Web Audio API
+  }
+}
