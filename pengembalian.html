@@ -43,6 +43,16 @@
         <div id="infoBuku" class="text-muted-soft small">Menunggu anggota terverifikasi...</div>
       </div>
 
+      <div class="card-soft p-3 mb-3 d-none" id="wrapperJumlahKembali">
+        <label class="form-label mb-1">Jumlah Buku Dikembalikan</label>
+        <div class="input-group" style="max-width: 200px;">
+          <button class="btn btn-outline-secondary" type="button" id="btnKurangiJumlahKembali">-</button>
+          <input type="number" class="form-control text-center" id="inputJumlahKembali" value="1" min="1">
+          <button class="btn btn-outline-secondary" type="button" id="btnTambahJumlahKembali">+</button>
+        </div>
+        <div class="form-text" id="keteranganJumlahKembali"></div>
+      </div>
+
       <div class="alert alert-warning d-none" id="alertTerlambat"></div>
 
       <button class="btn btn-brand btn-lg w-100" id="btnKembalikanBuku" disabled>

@@ -43,6 +43,16 @@
         <div id="infoBuku" class="text-muted-soft small">Menunggu anggota terverifikasi...</div>
       </div>
 
+      <div class="card-soft p-3 mb-3 d-none" id="wrapperJumlahPinjam">
+        <label class="form-label mb-1">Jumlah Buku Dipinjam</label>
+        <div class="input-group" style="max-width: 200px;">
+          <button class="btn btn-outline-secondary" type="button" id="btnKurangiJumlahPinjam">-</button>
+          <input type="number" class="form-control text-center" id="inputJumlahPinjam" value="1" min="1">
+          <button class="btn btn-outline-secondary" type="button" id="btnTambahJumlahPinjam">+</button>
+        </div>
+        <div class="form-text" id="keteranganJumlahPinjam"></div>
+      </div>
+
       <button class="btn btn-accent btn-lg w-100" id="btnPinjamBuku" disabled>
         <i class="bi bi-box-arrow-right"></i> Pinjam Buku
       </button>
