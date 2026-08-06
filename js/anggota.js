@@ -3,6 +3,8 @@
    ========================================================= */
 
 let daftarAnggotaCache = [];
+let sortFieldAnggota = "nama";
+let sortDirAnggota = "asc";
 
 function initAnggotaPage() {
   document.getElementById("anggotaJenis").addEventListener("change", toggleKelasField);
@@ -21,6 +23,31 @@ function initAnggotaPage() {
   document.getElementById("btnUnduhSemuaKartu").addEventListener("click", unduhSemuaKartu);
 
   muatDaftarAnggota();
+  perbaruiIkonSortAnggota();
+}
+
+function aturSortAnggota(field) {
+  if (sortFieldAnggota === field) {
+    sortDirAnggota = sortDirAnggota === "asc" ? "desc" : "asc";
+  } else {
+    sortFieldAnggota = field;
+    sortDirAnggota = "asc";
+  }
+  perbaruiIkonSortAnggota();
+  renderTabelAnggota(document.getElementById("searchAnggota")?.value || "");
+}
+
+function perbaruiIkonSortAnggota() {
+  ["id", "nama", "jenis", "kelas"].forEach(f => {
+    const icon = document.getElementById("sortIconAnggota-" + f);
+    if (!icon) return;
+    if (f === sortFieldAnggota) {
+      icon.className = "bi " + (sortDirAnggota === "asc" ? "bi-caret-up-fill" : "bi-caret-down-fill");
+    } else {
+      icon.className = "bi bi-caret-down";
+      icon.style.opacity = "0.25";
+    }
+  });
 }
 
 function toggleKelasField() {
@@ -45,10 +72,18 @@ function renderTabelAnggota(keyword = "") {
     !kw || a.nama.toLowerCase().includes(kw) || a.id.toLowerCase().includes(kw)
   );
 
+  data.sort((a, b) => {
+    const va = (a[sortFieldAnggota] || "").toString().toLowerCase();
+    const vb = (b[sortFieldAnggota] || "").toString().toLowerCase();
+    const hasil = va.localeCompare(vb, "id", { numeric: true });
+    return sortDirAnggota === "asc" ? hasil : -hasil;
+  });
+
   tbody.innerHTML = "";
-  data.forEach(a => {
+  data.forEach((a, index) => {
     tbody.innerHTML += `
       <tr>
+        <td>${index + 1}</td>
         <td><code>${a.id}</code></td>
         <td>${a.nama}</td>
         <td><span class="badge ${a.jenis === "Guru" ? "bg-primary" : "bg-secondary"}">${a.jenis}</span></td>

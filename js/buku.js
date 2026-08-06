@@ -3,6 +3,8 @@
    ========================================================= */
 
 let daftarBukuCache = [];
+let sortFieldBuku = "judul";
+let sortDirBuku = "asc";
 
 function initBukuPage() {
   document.getElementById("btnTambahBuku").addEventListener("click", () => {
@@ -21,6 +23,31 @@ function initBukuPage() {
   document.getElementById("btnUnduhSemuaLabel").addEventListener("click", unduhSemuaLabel);
 
   muatDaftarBuku();
+  perbaruiIkonSortBuku();
+}
+
+function aturSortBuku(field) {
+  if (sortFieldBuku === field) {
+    sortDirBuku = sortDirBuku === "asc" ? "desc" : "asc";
+  } else {
+    sortFieldBuku = field;
+    sortDirBuku = "asc";
+  }
+  perbaruiIkonSortBuku();
+  renderTabelBuku();
+}
+
+function perbaruiIkonSortBuku() {
+  ["id", "judul", "penulis", "kategori", "tersedia"].forEach(f => {
+    const icon = document.getElementById("sortIconBuku-" + f);
+    if (!icon) return;
+    if (f === sortFieldBuku) {
+      icon.className = "bi " + (sortDirBuku === "asc" ? "bi-caret-up-fill" : "bi-caret-down-fill");
+    } else {
+      icon.className = "bi bi-caret-down";
+      icon.style.opacity = "0.25";
+    }
+  });
 }
 
 /* ---------- Helper stok (kompatibel dengan data lama yang belum punya field jumlah/tersedia) ---------- */
@@ -57,8 +84,21 @@ function renderTabelBuku() {
     return cocokKw && cocokStatus;
   });
 
+  data.sort((a, b) => {
+    let va, vb;
+    if (sortFieldBuku === "tersedia") {
+      va = ambilTersediaBuku(a);
+      vb = ambilTersediaBuku(b);
+      return sortDirBuku === "asc" ? va - vb : vb - va;
+    }
+    va = (a[sortFieldBuku] || "").toString().toLowerCase();
+    vb = (b[sortFieldBuku] || "").toString().toLowerCase();
+    const hasil = va.localeCompare(vb, "id", { numeric: true });
+    return sortDirBuku === "asc" ? hasil : -hasil;
+  });
+
   tbody.innerHTML = "";
-  data.forEach(b => {
+  data.forEach((b, index) => {
     const jumlah = ambilJumlahBuku(b);
     const tersedia = ambilTersediaBuku(b);
     const badgeClass = tersedia > 0 ? "badge-status-tersedia" : "badge-status-dipinjam";
@@ -66,6 +106,7 @@ function renderTabelBuku() {
 
     tbody.innerHTML += `
       <tr>
+        <td>${index + 1}</td>
         <td><code>${b.id}</code></td>
         <td>${b.judul}</td>
         <td>${b.penulis || "-"}</td>
