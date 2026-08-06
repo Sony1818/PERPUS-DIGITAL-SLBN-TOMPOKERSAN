@@ -260,6 +260,13 @@ a:hover{ color: var(--primary-dark); }
   border-bottom: 1px solid var(--border);
   font-weight: 600;
 }
+.th-sort{
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.th-sort:hover{ color: var(--primary); }
+.th-sort i{ font-size: .75rem; margin-left: 2px; }
 .table > :not(caption) > * > *{
   color: var(--text);
   border-bottom-color: var(--border);
