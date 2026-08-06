@@ -33,7 +33,12 @@
       <table class="table table-hover align-middle mb-0">
         <thead>
           <tr>
-            <th>ID Anggota</th><th>Nama</th><th>Jenis</th><th>Kelas</th><th class="text-end">Aksi</th>
+            <th style="width:48px;">No</th>
+            <th class="th-sort" onclick="aturSortAnggota('id')">ID Anggota <i class="bi" id="sortIconAnggota-id"></i></th>
+            <th class="th-sort" onclick="aturSortAnggota('nama')">Nama <i class="bi" id="sortIconAnggota-nama"></i></th>
+            <th class="th-sort" onclick="aturSortAnggota('jenis')">Jenis <i class="bi" id="sortIconAnggota-jenis"></i></th>
+            <th class="th-sort" onclick="aturSortAnggota('kelas')">Kelas <i class="bi" id="sortIconAnggota-kelas"></i></th>
+            <th class="text-end">Aksi</th>
           </tr>
         </thead>
         <tbody id="tabelAnggota"></tbody>

@@ -38,7 +38,13 @@
       <table class="table table-hover align-middle mb-0">
         <thead>
           <tr>
-            <th>ID Buku</th><th>Judul</th><th>Penulis</th><th>Kategori</th><th>Stok</th><th class="text-end">Aksi</th>
+            <th style="width:48px;">No</th>
+            <th class="th-sort" onclick="aturSortBuku('id')">ID Buku <i class="bi" id="sortIconBuku-id"></i></th>
+            <th class="th-sort" onclick="aturSortBuku('judul')">Judul <i class="bi" id="sortIconBuku-judul"></i></th>
+            <th class="th-sort" onclick="aturSortBuku('penulis')">Penulis <i class="bi" id="sortIconBuku-penulis"></i></th>
+            <th class="th-sort" onclick="aturSortBuku('kategori')">Kategori <i class="bi" id="sortIconBuku-kategori"></i></th>
+            <th class="th-sort" onclick="aturSortBuku('tersedia')">Stok <i class="bi" id="sortIconBuku-tersedia"></i></th>
+            <th class="text-end">Aksi</th>
           </tr>
         </thead>
         <tbody id="tabelBuku"></tbody>
